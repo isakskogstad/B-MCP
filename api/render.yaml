@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: b-mcp-api
+    runtime: node
+    region: frankfurt
+    plan: free
+    rootDir: api
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: BOLAGSVERKET_CLIENT_ID
+        sync: false
+      - key: BOLAGSVERKET_CLIENT_SECRET
+        sync: false

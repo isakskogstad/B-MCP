@@ -3,21 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>B-MCP - Bolagsverket MCP Server</title>
+    <title>B-MCP - Bolagsverket Chat</title>
     <style>
         :root {
             --primary: #0066cc;
             --primary-dark: #004999;
-            --success: #28a745;
-            --warning: #ffc107;
-            --danger: #dc3545;
             --bg: #f8f9fa;
             --card-bg: #ffffff;
             --text: #212529;
             --text-muted: #6c757d;
             --border: #dee2e6;
-            --code-bg: #1e1e1e;
-            --code-text: #d4d4d4;
+            --user-bg: #e3f2fd;
+            --assistant-bg: #f5f5f5;
+            --tool-bg: #fff3e0;
         }
 
         * {
@@ -27,700 +25,438 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg);
             color: var(--text);
-            line-height: 1.6;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-
-        /* Hero */
-        .hero {
+        header {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: white;
-            padding: 60px 20px;
-            text-align: center;
-        }
-
-        .hero h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-
-        .hero .subtitle {
-            font-size: 1.25rem;
-            opacity: 0.9;
-            margin-bottom: 30px;
-        }
-
-        .hero .badges {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .badge {
-            background: rgba(255,255,255,0.2);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.875rem;
-        }
-
-        /* Navigation */
-        .nav {
-            background: var(--card-bg);
-            border-bottom: 1px solid var(--border);
             padding: 15px 20px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .nav-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            max-width: 1200px;
-            margin: 0 auto;
         }
 
-        .nav-links {
-            display: flex;
-            gap: 20px;
-        }
-
-        .nav-links a {
-            color: var(--text);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .nav-links a:hover {
-            color: var(--primary);
-        }
-
-        .github-btn {
-            background: var(--text);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .github-btn:hover {
-            background: var(--primary);
-        }
-
-        /* Sections */
-        section {
-            padding: 60px 20px;
-        }
-
-        section h2 {
-            font-size: 1.75rem;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-
-        /* Features Grid */
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-        }
-
-        .feature-card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 25px;
-            border: 1px solid var(--border);
-        }
-
-        .feature-card h3 {
-            font-size: 1.1rem;
-            margin-bottom: 10px;
-            color: var(--primary);
-        }
-
-        .feature-card p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-
-        /* Tools Table */
-        .tools-section {
-            background: var(--card-bg);
-        }
-
-        .tools-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        .tools-table th,
-        .tools-table td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .tools-table th {
-            background: var(--bg);
+        header h1 {
+            font-size: 1.25rem;
             font-weight: 600;
         }
 
-        .tools-table code {
-            background: var(--bg);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.875rem;
-        }
-
-        /* Demo Section */
-        .demo-section {
-            background: var(--code-bg);
-            color: var(--code-text);
-        }
-
-        .demo-section h2 {
-            color: white;
-        }
-
-        .demo-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        @media (max-width: 768px) {
-            .demo-container {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .demo-input, .demo-output {
-            background: #2d2d2d;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .demo-header {
-            background: #3d3d3d;
-            padding: 10px 15px;
-            font-size: 0.875rem;
-            color: #999;
+        .status {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-        }
-
-        .demo-content {
-            padding: 15px;
-            font-family: 'Monaco', 'Menlo', monospace;
+            gap: 8px;
             font-size: 0.875rem;
-            white-space: pre-wrap;
-            max-height: 400px;
-            overflow-y: auto;
         }
 
-        .demo-input select {
-            background: #4d4d4d;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .json-key { color: #9cdcfe; }
-        .json-string { color: #ce9178; }
-        .json-number { color: #b5cea8; }
-        .json-boolean { color: #569cd6; }
-
-        /* Installation */
-        .install-section {
-            background: var(--card-bg);
-        }
-
-        .install-steps {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .step {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .step-number {
-            width: 40px;
-            height: 40px;
-            background: var(--primary);
-            color: white;
+        .status-dot {
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
+            background: #ff4444;
+        }
+
+        .status-dot.connected {
+            background: #00c853;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            flex-shrink: 0;
+            flex-direction: column;
+            gap: 16px;
         }
 
-        .step-content h3 {
-            margin-bottom: 10px;
+        .message {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.5;
         }
 
-        .step-content pre {
-            background: var(--code-bg);
-            color: var(--code-text);
-            padding: 15px;
+        .message.user {
+            background: var(--user-bg);
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant {
+            background: var(--assistant-bg);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.tool {
+            background: var(--tool-bg);
+            align-self: flex-start;
+            font-size: 0.875rem;
+            border-left: 3px solid #ff9800;
+        }
+
+        .message pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 12px;
             border-radius: 8px;
             overflow-x: auto;
-            margin-top: 10px;
+            font-size: 0.8rem;
+            margin-top: 8px;
         }
 
-        .step-content code {
-            font-family: 'Monaco', 'Menlo', monospace;
+        .message code {
+            background: rgba(0,0,0,0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.875em;
+        }
+
+        .input-container {
+            padding: 15px 20px;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+        }
+
+        #message-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #message-input:focus {
+            border-color: var(--primary);
+        }
+
+        #send-btn {
+            padding: 12px 24px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #send-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        #send-btn:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 4px;
+            padding: 12px 16px;
+            background: var(--assistant-bg);
+            border-radius: 12px;
+            align-self: flex-start;
+        }
+
+        .typing-indicator.visible {
+            display: flex;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-4px); }
+        }
+
+        .examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .example-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
             font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        /* Security */
-        .security-section {
-            background: linear-gradient(135deg, #28a745 0%, #20863d 100%);
+        .example-btn:hover {
+            background: var(--primary);
             color: white;
+            border-color: var(--primary);
         }
 
-        .security-section h2 {
-            color: white;
-        }
-
-        .security-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .security-item {
-            background: rgba(255,255,255,0.1);
-            padding: 20px;
-            border-radius: 8px;
-        }
-
-        .security-item h4 {
-            margin-bottom: 8px;
-        }
-
-        .security-item p {
-            opacity: 0.9;
-            font-size: 0.95rem;
-        }
-
-        /* Footer */
-        footer {
-            background: var(--text);
-            color: white;
-            padding: 40px 20px;
+        .welcome {
             text-align: center;
+            padding: 40px 20px;
         }
 
-        footer a {
+        .welcome h2 {
+            margin-bottom: 10px;
             color: var(--primary);
         }
 
-        .footer-links {
-            display: flex;
-            gap: 30px;
-            justify-content: center;
-            margin-top: 20px;
+        .welcome p {
+            color: var(--text-muted);
+            margin-bottom: 20px;
         }
 
-        .footer-links a {
-            color: rgba(255,255,255,0.7);
-            text-decoration: none;
+        /* Markdown-like formatting */
+        .message h1, .message h2, .message h3 {
+            margin-top: 16px;
+            margin-bottom: 8px;
         }
 
-        .footer-links a:hover {
-            color: white;
+        .message ul, .message ol {
+            margin-left: 20px;
+            margin-top: 8px;
+        }
+
+        .message li {
+            margin-bottom: 4px;
+        }
+
+        .message strong {
+            font-weight: 600;
+        }
+
+        .message table {
+            border-collapse: collapse;
+            margin: 12px 0;
+            width: 100%;
+        }
+
+        .message th, .message td {
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .message th {
+            background: var(--bg);
         }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="nav">
-        <div class="nav-content">
-            <strong>B-MCP</strong>
-            <div class="nav-links">
-                <a href="#features">Funktioner</a>
-                <a href="#tools">Verktyg</a>
-                <a href="#demo">Demo</a>
-                <a href="#install">Installation</a>
-            </div>
-            <a href="https://github.com/isakskogstad/B-MCP" class="github-btn">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-                </svg>
-                GitHub
-            </a>
-        </div>
-    </nav>
-
-    <!-- Hero -->
-    <header class="hero">
-        <div class="container">
-            <h1>B-MCP</h1>
-            <p class="subtitle">Bolagsverket MCP Server - Hämta och analysera svenska företagsdata</p>
-            <div class="badges">
-                <span class="badge">16 Verktyg</span>
-                <span class="badge">4 Resources</span>
-                <span class="badge">4 Prompts</span>
-                <span class="badge">Python 3.11+</span>
-                <span class="badge">FastMCP</span>
-            </div>
+    <header>
+        <h1>B-MCP - Bolagsverket Chat</h1>
+        <div class="status">
+            <div class="status-dot" id="status-dot"></div>
+            <span id="status-text">Ansluter...</span>
         </div>
     </header>
 
-    <!-- Features -->
-    <section id="features">
-        <div class="container">
-            <h2>Funktioner</h2>
-            <div class="features">
-                <div class="feature-card">
-                    <h3>Grundläggande företagsinfo</h3>
-                    <p>Hämta namn, organisationsnummer, bolagsform, status och registreringsdatum för alla svenska företag.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Finansiella nyckeltal</h3>
-                    <p>Analysera omsättning, resultat, soliditet, kassalikviditet och andra nyckeltal från årsredovisningar.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Styrelse & Ledning</h3>
-                    <p>Se styrelseledamöter, VD, revisorer och firmatecknare med roller och mandatperioder.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Riskanalys</h3>
-                    <p>Automatisk riskbedömning med varningar för dålig ekonomi, uteblivna årsredovisningar och obestånd.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Flerårsöversikt</h3>
-                    <p>Jämför nyckeltal över 4 år för att identifiera trender och förändringar.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Export</h3>
-                    <p>Exportera till Excel, PDF, Word, PowerPoint, CSV och JSON för vidare analys.</p>
-                </div>
+    <div class="chat-container" id="chat-container">
+        <div class="welcome">
+            <h2>Välkommen till Bolagsverket Chat</h2>
+            <p>Ställ frågor om svenska företag - jag hämtar data direkt från Bolagsverkets API.</p>
+            <div class="examples">
+                <button class="example-btn" onclick="sendExample('Visa information om Volvo (org.nr 556036-0793)')">
+                    Info om Volvo
+                </button>
+                <button class="example-btn" onclick="sendExample('Lista årsredovisningar för Spotify (5567885726)')">
+                    Spotifys årsredovisningar
+                </button>
+                <button class="example-btn" onclick="sendExample('Gör en riskanalys av 5564859921')">
+                    Riskanalys
+                </button>
+                <button class="example-btn" onclick="sendExample('Jämför Volvo (5560360793) med Scania (5562155227)')">
+                    Jämför företag
+                </button>
             </div>
         </div>
-    </section>
-
-    <!-- Tools Table -->
-    <section id="tools" class="tools-section">
-        <div class="container">
-            <h2>Tillgängliga verktyg</h2>
-            <table class="tools-table">
-                <thead>
-                    <tr>
-                        <th>Verktyg</th>
-                        <th>Beskrivning</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><code>bolagsverket_check_status</code></td>
-                        <td>Kontrollera API-status och anslutning</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_get_basic_info</code></td>
-                        <td>Grundläggande företagsinfo (namn, bolagsform, status)</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_get_address</code></td>
-                        <td>Postadress och säte</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_get_verksamhet</code></td>
-                        <td>Verksamhetsbeskrivning och SNI-koder</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_get_nyckeltal</code></td>
-                        <td>Finansiella nyckeltal från senaste årsredovisning</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_get_styrelse</code></td>
-                        <td>Styrelse, VD och revisorer</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_get_trends</code></td>
-                        <td>Flerårsöversikt med trender</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_risk_analysis</code></td>
-                        <td>Riskbedömning med varningar</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_compare_companies</code></td>
-                        <td>Jämför två företag sida vid sida</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_finansiell_snapshot</code></td>
-                        <td>Snabb finansiell översikt</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_arenden</code></td>
-                        <td>Tidslinje över företagshändelser</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_styrelse_ledning</code></td>
-                        <td>Detaljerad styrelse- och ledningsinfo</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_batch_lookup</code></td>
-                        <td>Sök flera företag samtidigt (max 20)</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_export</code></td>
-                        <td>Exportera till olika format</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_list_arsredovisningar</code></td>
-                        <td>Lista tillgängliga årsredovisningar</td>
-                    </tr>
-                    <tr>
-                        <td><code>bolagsverket_download_original</code></td>
-                        <td>Ladda ner original ZIP/XHTML</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="typing-indicator" id="typing-indicator">
+            <span></span>
+            <span></span>
+            <span></span>
         </div>
-    </section>
+    </div>
 
-    <!-- Demo -->
-    <section id="demo" class="demo-section">
-        <div class="container">
-            <h2>Live Demo</h2>
-            <div class="demo-container">
-                <div class="demo-input">
-                    <div class="demo-header">
-                        <span>Verktyg</span>
-                        <select id="tool-select" onchange="updateDemo()">
-                            <option value="basic">bolagsverket_get_basic_info</option>
-                            <option value="nyckeltal">bolagsverket_get_nyckeltal</option>
-                            <option value="risk">bolagsverket_risk_analysis</option>
-                            <option value="styrelse">bolagsverket_get_styrelse</option>
-                        </select>
-                    </div>
-                    <div class="demo-content" id="demo-input-content">
-{
-  <span class="json-key">"org_nummer"</span>: <span class="json-string">"5560360793"</span>
-}</div>
-                </div>
-                <div class="demo-output">
-                    <div class="demo-header">
-                        <span>Svar</span>
-                        <span style="color: #4ec9b0;">200 OK</span>
-                    </div>
-                    <div class="demo-content" id="demo-output-content"></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Installation -->
-    <section id="install" class="install-section">
-        <div class="container">
-            <h2>Installation</h2>
-            <div class="install-steps">
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <div class="step-content">
-                        <h3>Klona repot</h3>
-                        <pre><code>git clone https://github.com/isakskogstad/B-MCP.git
-cd B-MCP</code></pre>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <div class="step-content">
-                        <h3>Installera dependencies</h3>
-                        <pre><code>pip install -r requirements.txt</code></pre>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <div class="step-content">
-                        <h3>Konfigurera credentials</h3>
-                        <p>Skapa konto på <a href="https://portal.api.bolagsverket.se" target="_blank">portal.api.bolagsverket.se</a> och sätt miljövariabler:</p>
-                        <pre><code>export BOLAGSVERKET_CLIENT_ID="din-client-id"
-export BOLAGSVERKET_CLIENT_SECRET="din-client-secret"</code></pre>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-number">4</div>
-                    <div class="step-content">
-                        <h3>Starta MCP-servern</h3>
-                        <pre><code>python bolagsverket_mcp.py</code></pre>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-number">5</div>
-                    <div class="step-content">
-                        <h3>Konfigurera Claude Desktop</h3>
-                        <p>Lägg till i <code>claude_desktop_config.json</code>:</p>
-                        <pre><code>{
-  "mcpServers": {
-    "bolagsverket": {
-      "command": "python",
-      "args": ["/path/to/B-MCP/bolagsverket_mcp.py"],
-      "env": {
-        "BOLAGSVERKET_CLIENT_ID": "din-client-id",
-        "BOLAGSVERKET_CLIENT_SECRET": "din-client-secret"
-      }
-    }
-  }
-}</code></pre>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Security -->
-    <section class="security-section">
-        <div class="container">
-            <h2>Säkerhet</h2>
-            <div class="security-grid">
-                <div class="security-item">
-                    <h4>Inga credentials i kod</h4>
-                    <p>Alla API-credentials läses från miljövariabler. Inget känsligt läcker till Git.</p>
-                </div>
-                <div class="security-item">
-                    <h4>OAuth2-autentisering</h4>
-                    <p>Använder OAuth2 Client Credentials Flow med automatisk token-förnyelse.</p>
-                </div>
-                <div class="security-item">
-                    <h4>.gitignore</h4>
-                    <p>.env-filer och credentials ignoreras automatiskt av Git.</p>
-                </div>
-                <div class="security-item">
-                    <h4>Validering</h4>
-                    <p>Servern startar inte utan giltiga credentials - ingen risk för okrypterade anrop.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <p>B-MCP - Open Source under MIT License</p>
-            <div class="footer-links">
-                <a href="https://github.com/isakskogstad/B-MCP">GitHub</a>
-                <a href="https://portal.api.bolagsverket.se">Bolagsverket API</a>
-                <a href="https://modelcontextprotocol.io">MCP Protocol</a>
-            </div>
-        </div>
-    </footer>
+    <div class="input-container">
+        <input
+            type="text"
+            id="message-input"
+            placeholder="Ställ en fråga om ett svenskt företag..."
+            onkeypress="if(event.key === 'Enter') sendMessage()"
+        >
+        <button id="send-btn" onclick="sendMessage()">Skicka</button>
+    </div>
 
     <script>
-        const demoData = {
-            basic: {
-                input: `{
-  <span class="json-key">"org_nummer"</span>: <span class="json-string">"5560360793"</span>
-}`,
-                output: `{
-  <span class="json-key">"success"</span>: <span class="json-boolean">true</span>,
-  <span class="json-key">"data"</span>: {
-    <span class="json-key">"organisationsnummer"</span>: <span class="json-string">"556036-0793"</span>,
-    <span class="json-key">"namn"</span>: <span class="json-string">"Volvo AB"</span>,
-    <span class="json-key">"bolagsform"</span>: <span class="json-string">"Publikt aktiebolag"</span>,
-    <span class="json-key">"status"</span>: <span class="json-string">"Aktivt"</span>,
-    <span class="json-key">"registreringsdatum"</span>: <span class="json-string">"1915-06-14"</span>,
-    <span class="json-key">"sate"</span>: <span class="json-string">"Göteborg"</span>
-  }
-}`
-            },
-            nyckeltal: {
-                input: `{
-  <span class="json-key">"org_nummer"</span>: <span class="json-string">"5560360793"</span>
-}`,
-                output: `{
-  <span class="json-key">"success"</span>: <span class="json-boolean">true</span>,
-  <span class="json-key">"nyckeltal"</span>: {
-    <span class="json-key">"omsattning"</span>: <span class="json-number">473800000000</span>,
-    <span class="json-key">"resultat"</span>: <span class="json-number">42100000000</span>,
-    <span class="json-key">"soliditet"</span>: <span class="json-number">28.5</span>,
-    <span class="json-key">"kassalikviditet"</span>: <span class="json-number">92.3</span>,
-    <span class="json-key">"anstallda"</span>: <span class="json-number">102000</span>
-  },
-  <span class="json-key">"period"</span>: <span class="json-string">"2023-01-01 - 2023-12-31"</span>
-}`
-            },
-            risk: {
-                input: `{
-  <span class="json-key">"org_nummer"</span>: <span class="json-string">"5560360793"</span>
-}`,
-                output: `{
-  <span class="json-key">"success"</span>: <span class="json-boolean">true</span>,
-  <span class="json-key">"risk_score"</span>: <span class="json-number">15</span>,
-  <span class="json-key">"risk_level"</span>: <span class="json-string">"LOW"</span>,
-  <span class="json-key">"warnings"</span>: [],
-  <span class="json-key">"positive_indicators"</span>: [
-    <span class="json-string">"God soliditet (28.5%)"</span>,
-    <span class="json-string">"Stabil omsättning"</span>,
-    <span class="json-string">"Positivt resultat"</span>
-  ],
-  <span class="json-key">"recommendation"</span>: <span class="json-string">"Stabilt företag med god ekonomi"</span>
-}`
-            },
-            styrelse: {
-                input: `{
-  <span class="json-key">"org_nummer"</span>: <span class="json-string">"5560360793"</span>
-}`,
-                output: `{
-  <span class="json-key">"success"</span>: <span class="json-boolean">true</span>,
-  <span class="json-key">"styrelse"</span>: [
-    {
-      <span class="json-key">"namn"</span>: <span class="json-string">"Carl-Henric Svanberg"</span>,
-      <span class="json-key">"roll"</span>: <span class="json-string">"Styrelseordförande"</span>
-    },
-    {
-      <span class="json-key">"namn"</span>: <span class="json-string">"Martin Lundstedt"</span>,
-      <span class="json-key">"roll"</span>: <span class="json-string">"VD och koncernchef"</span>
-    }
-  ],
-  <span class="json-key">"revisorer"</span>: [
-    {
-      <span class="json-key">"namn"</span>: <span class="json-string">"Deloitte AB"</span>,
-      <span class="json-key">"roll"</span>: <span class="json-string">"Revisor"</span>
-    }
-  ]
-}`
-            }
-        };
+        const API_URL = 'https://b-mcp-api.onrender.com';
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const typingIndicator = document.getElementById('typing-indicator');
 
-        function updateDemo() {
-            const select = document.getElementById('tool-select');
-            const tool = select.value;
-            document.getElementById('demo-input-content').innerHTML = demoData[tool].input;
-            document.getElementById('demo-output-content').innerHTML = demoData[tool].output;
+        let messages = [];
+        let isConnected = false;
+
+        // Check API status
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (response.ok) {
+                    isConnected = true;
+                    statusDot.classList.add('connected');
+                    statusText.textContent = 'Ansluten';
+                } else {
+                    throw new Error('API not available');
+                }
+            } catch {
+                isConnected = false;
+                statusDot.classList.remove('connected');
+                statusText.textContent = 'Ej ansluten';
+            }
         }
 
-        // Initialize
-        updateDemo();
+        // Check status on load and periodically
+        checkStatus();
+        setInterval(checkStatus, 30000);
+
+        function addMessage(role, content, isHtml = false) {
+            const welcome = chatContainer.querySelector('.welcome');
+            if (welcome) welcome.remove();
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            if (isHtml) {
+                messageDiv.innerHTML = content;
+            } else {
+                messageDiv.textContent = content;
+            }
+
+            chatContainer.insertBefore(messageDiv, typingIndicator);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function formatMessage(text) {
+            // Basic markdown-like formatting
+            let html = text
+                // Code blocks
+                .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+                // Inline code
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                // Bold
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                // Headers
+                .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+                .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+                .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+                // Line breaks
+                .replace(/\n/g, '<br>');
+
+            return html;
+        }
+
+        async function sendMessage() {
+            const content = messageInput.value.trim();
+            if (!content) return;
+
+            if (!isConnected) {
+                addMessage('assistant', 'Anslutningen till servern är inte klar. Vänta några sekunder och försök igen.');
+                return;
+            }
+
+            // Add user message
+            messages.push({ role: 'user', content });
+            addMessage('user', content);
+            messageInput.value = '';
+            sendBtn.disabled = true;
+            typingIndicator.classList.add('visible');
+
+            try {
+                const response = await fetch(`${API_URL}/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages,
+                        model: 'claude-opus-4-5-20250929'
+                    }),
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let assistantContent = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+
+                                if (data.type === 'text') {
+                                    assistantContent += data.content;
+                                } else if (data.type === 'tool_call') {
+                                    addMessage('tool', `🔧 Anropar ${data.name}...`);
+                                } else if (data.type === 'tool_result') {
+                                    const status = data.success ? '✓' : '✗';
+                                    addMessage('tool', `${status} ${data.name} ${data.success ? 'klar' : 'fel: ' + data.error}`);
+                                } else if (data.type === 'error') {
+                                    addMessage('assistant', `Fel: ${data.error}`);
+                                }
+                            } catch {}
+                        }
+                    }
+                }
+
+                if (assistantContent) {
+                    messages.push({ role: 'assistant', content: assistantContent });
+                    addMessage('assistant', formatMessage(assistantContent), true);
+                }
+
+            } catch (error) {
+                addMessage('assistant', `Fel vid kommunikation med servern: ${error.message}`);
+            } finally {
+                sendBtn.disabled = false;
+                typingIndicator.classList.remove('visible');
+            }
+        }
+
+        function sendExample(text) {
+            messageInput.value = text;
+            sendMessage();
+        }
     </script>
 </body>
 </html>
