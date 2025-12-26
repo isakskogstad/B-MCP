@@ -1,5 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+// Types
+interface TokenResponse {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
+}
+
 // OAuth2 Token Manager
 class TokenManager {
   private token: string | null = null;
@@ -37,7 +44,7 @@ class TokenManager {
       throw new Error(`Token error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as TokenResponse;
     this.token = data.access_token;
     this.expiresAt = new Date(Date.now() + (data.expires_in - 60) * 1000);
 
