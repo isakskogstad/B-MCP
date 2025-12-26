@@ -26,7 +26,7 @@ class TokenManager {
       );
     }
 
-    const tokenUrl = "https://auth.api.bolagsverket.se/auth/realms/bolagsverket/protocol/openid-connect/token";
+    const tokenUrl = "https://gw.api.bolagsverket.se/oauth2/token";
 
     const response = await fetch(tokenUrl, {
       method: "POST",
@@ -84,7 +84,7 @@ async function apiRequest(
 async function getOrganisation(orgNummer: string): Promise<unknown> {
   const cleanOrg = orgNummer.replace(/\D/g, "");
   return apiRequest("/organisationer", "POST", {
-    organisationsnummer: [cleanOrg],
+    identitetsbeteckning: cleanOrg,
   });
 }
 
@@ -92,28 +92,33 @@ async function getOrganisation(orgNummer: string): Promise<unknown> {
 async function getDokumentlista(orgNummer: string): Promise<unknown> {
   const cleanOrg = orgNummer.replace(/\D/g, "");
   return apiRequest("/dokumentlista", "POST", {
-    organisationsnummer: [cleanOrg],
+    identitetsbeteckning: cleanOrg,
   });
 }
 
 // Parse iXBRL from annual report
 async function parseArsredovisning(orgNummer: string): Promise<Record<string, unknown>> {
-  const docs = (await getDokumentlista(orgNummer)) as { dokument?: Array<{ typ?: string; url?: string }> };
-  const arsredovisningar = (docs.dokument || []).filter(
-    (d) => d.typ === "Årsredovisning"
-  );
+  const docs = (await getDokumentlista(orgNummer)) as {
+    dokument?: Array<{
+      dokumentId?: string;
+      filformat?: string;
+      rapporteringsperiodTom?: string;
+    }>
+  };
+
+  const arsredovisningar = docs.dokument || [];
 
   if (arsredovisningar.length === 0) {
     return { error: "Ingen årsredovisning hittades" };
   }
 
-  const latestUrl = arsredovisningar[0]?.url;
-  if (!latestUrl) {
-    return { error: "Ingen URL för årsredovisning" };
+  const latestDoc = arsredovisningar[0];
+  if (!latestDoc?.dokumentId) {
+    return { error: "Inget dokument-ID för årsredovisning" };
   }
 
   const token = await tokenManager.getToken();
-  const response = await fetch(latestUrl, {
+  const response = await fetch(`${API_BASE}/dokument/${latestDoc.dokumentId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -297,12 +302,14 @@ export async function executeBolagsverketTool(
       const orgNummer = input.org_nummer as string;
       const data = (await getOrganisation(orgNummer)) as {
         organisationer?: Array<{
-          organisationsnummer?: string;
-          namn?: string;
-          foretagsform?: string;
-          status?: string;
-          registreringsdatum?: string;
-          sate?: string;
+          organisationsidentitet?: { identitetsbeteckning?: string };
+          organisationsnamn?: {
+            organisationsnamnLista?: Array<{ namn?: string }>;
+          };
+          organisationsform?: { kod?: string; klartext?: string };
+          verksamOrganisation?: { kod?: string };
+          organisationsdatum?: { registreringsdatum?: string };
+          verksamhetsbeskrivning?: { beskrivning?: string };
         }>
       };
       const org = data.organisationer?.[0];
@@ -311,13 +318,16 @@ export async function executeBolagsverketTool(
         return { error: "Företaget hittades inte" };
       }
 
+      const namn = org.organisationsnamn?.organisationsnamnLista?.[0]?.namn;
+      const aktiv = org.verksamOrganisation?.kod === "JA";
+
       return {
-        organisationsnummer: org.organisationsnummer,
-        namn: org.namn,
-        bolagsform: org.foretagsform,
-        status: org.status,
-        registreringsdatum: org.registreringsdatum,
-        sate: org.sate,
+        organisationsnummer: org.organisationsidentitet?.identitetsbeteckning,
+        namn: namn,
+        bolagsform: org.organisationsform?.klartext,
+        aktiv: aktiv,
+        registreringsdatum: org.organisationsdatum?.registreringsdatum,
+        verksamhet: org.verksamhetsbeskrivning?.beskrivning,
       };
     }
 
@@ -325,13 +335,15 @@ export async function executeBolagsverketTool(
       const orgNummer = input.org_nummer as string;
       const data = (await getOrganisation(orgNummer)) as {
         organisationer?: Array<{
-          postadress?: {
-            gatuadress?: string;
-            postnummer?: string;
-            postort?: string;
-            land?: string;
+          postadressOrganisation?: {
+            postadress?: {
+              utdelningsadress?: string;
+              postnummer?: string;
+              postort?: string;
+              land?: string;
+              coAdress?: string;
+            };
           };
-          sate?: string;
         }>
       };
       const org = data.organisationer?.[0];
@@ -340,9 +352,13 @@ export async function executeBolagsverketTool(
         return { error: "Företaget hittades inte" };
       }
 
+      const addr = org.postadressOrganisation?.postadress;
       return {
-        postadress: org.postadress,
-        sate: org.sate,
+        adress: addr?.utdelningsadress,
+        coAdress: addr?.coAdress,
+        postnummer: addr?.postnummer,
+        postort: addr?.postort,
+        land: addr?.land,
       };
     }
 
@@ -355,17 +371,18 @@ export async function executeBolagsverketTool(
       const orgNummer = input.org_nummer as string;
       const data = (await getDokumentlista(orgNummer)) as {
         dokument?: Array<{
-          typ?: string;
+          dokumentId?: string;
+          filformat?: string;
           rapporteringsperiodTom?: string;
           registreringstidpunkt?: string;
         }>
       };
-      const arsredovisningar = (data.dokument || [])
-        .filter((d) => d.typ === "Årsredovisning")
-        .map((d) => ({
-          period: d.rapporteringsperiodTom,
-          registrerad: d.registreringstidpunkt,
-        }));
+      const arsredovisningar = (data.dokument || []).map((d) => ({
+        dokumentId: d.dokumentId,
+        period: d.rapporteringsperiodTom,
+        registrerad: d.registreringstidpunkt,
+        format: d.filformat,
+      }));
 
       return {
         antal: arsredovisningar.length,
@@ -377,9 +394,16 @@ export async function executeBolagsverketTool(
       const orgNummer = input.org_nummer as string;
       const data = (await getOrganisation(orgNummer)) as {
         organisationer?: Array<{
-          namn?: string;
-          status?: string;
-          foretagsform?: string;
+          organisationsnamn?: { organisationsnamnLista?: Array<{ namn?: string }> };
+          verksamOrganisation?: { kod?: string };
+          organisationsform?: { klartext?: string };
+          avregistreradOrganisation?: { avregistreringsdatum?: string };
+          pagaendeAvvecklingsEllerOmstruktureringsforfarande?: {
+            pagaendeAvvecklingsEllerOmstruktureringsforfarandeLista?: Array<{
+              kod?: string;
+              klartext?: string;
+            }>;
+          };
         }>
       };
       const org = data.organisationer?.[0];
@@ -391,14 +415,27 @@ export async function executeBolagsverketTool(
       const warnings: string[] = [];
       let riskScore = 0;
 
-      // Check status
-      if (org.status !== "Aktivt" && org.status !== "Registrerat") {
-        warnings.push(`Status: ${org.status}`);
+      // Check if active
+      if (org.verksamOrganisation?.kod !== "JA") {
+        warnings.push("Företaget är inte aktivt");
         riskScore += 30;
       }
 
+      // Check if deregistered
+      if (org.avregistreradOrganisation?.avregistreringsdatum) {
+        warnings.push(`Avregistrerat: ${org.avregistreradOrganisation.avregistreringsdatum}`);
+        riskScore += 50;
+      }
+
+      // Check ongoing procedures (bankruptcy, liquidation)
+      const procedures = org.pagaendeAvvecklingsEllerOmstruktureringsforfarande?.pagaendeAvvecklingsEllerOmstruktureringsforfarandeLista || [];
+      for (const proc of procedures) {
+        warnings.push(`Pågående: ${proc.klartext || proc.kod}`);
+        riskScore += 40;
+      }
+
       // Check company type
-      if (org.foretagsform === "Enskild näringsidkare") {
+      if (org.organisationsform?.klartext === "Enskild näringsidkare") {
         warnings.push("Enskild firma - personligt ansvar");
         riskScore += 10;
       }
@@ -406,8 +443,10 @@ export async function executeBolagsverketTool(
       const riskLevel =
         riskScore < 20 ? "LOW" : riskScore < 50 ? "MEDIUM" : "HIGH";
 
+      const namn = org.organisationsnamn?.organisationsnamnLista?.[0]?.namn;
+
       return {
-        foretag: org.namn,
+        foretag: namn,
         risk_score: riskScore,
         risk_level: riskLevel,
         warnings,
@@ -422,17 +461,36 @@ export async function executeBolagsverketTool(
       const org1 = input.org_nummer_1 as string;
       const org2 = input.org_nummer_2 as string;
 
+      type OrgResponse = {
+        organisationer?: Array<{
+          organisationsidentitet?: { identitetsbeteckning?: string };
+          organisationsnamn?: { organisationsnamnLista?: Array<{ namn?: string }> };
+          organisationsform?: { klartext?: string };
+          verksamOrganisation?: { kod?: string };
+          organisationsdatum?: { registreringsdatum?: string };
+        }>
+      };
+
       const [data1, data2] = await Promise.all([
-        getOrganisation(org1) as Promise<{ organisationer?: Array<{ namn?: string; foretagsform?: string; status?: string }> }>,
-        getOrganisation(org2) as Promise<{ organisationer?: Array<{ namn?: string; foretagsform?: string; status?: string }> }>,
+        getOrganisation(org1) as Promise<OrgResponse>,
+        getOrganisation(org2) as Promise<OrgResponse>,
       ]);
 
-      const company1 = data1.organisationer?.[0];
-      const company2 = data2.organisationer?.[0];
+      const mapOrg = (org: OrgResponse["organisationer"]) => {
+        const o = org?.[0];
+        if (!o) return { error: "Ej funnet" };
+        return {
+          organisationsnummer: o.organisationsidentitet?.identitetsbeteckning,
+          namn: o.organisationsnamn?.organisationsnamnLista?.[0]?.namn,
+          bolagsform: o.organisationsform?.klartext,
+          aktiv: o.verksamOrganisation?.kod === "JA",
+          registreringsdatum: o.organisationsdatum?.registreringsdatum,
+        };
+      };
 
       return {
-        foretag_1: company1 || { error: "Ej funnet" },
-        foretag_2: company2 || { error: "Ej funnet" },
+        foretag_1: mapOrg(data1.organisationer),
+        foretag_2: mapOrg(data2.organisationer),
       };
     }
 
