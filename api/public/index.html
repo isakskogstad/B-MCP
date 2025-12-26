@@ -104,7 +104,7 @@
         else if (k === 'innerHTML') el.innerHTML = v;
         else el.setAttribute(k, v);
       }
-      children.flat().forEach(c => c != null && el.append(typeof c === 'string' ? document.createTextNode(c) : c));
+      children.flat().forEach(c => c != null && c !== false && c !== true && el.append(typeof c === 'string' ? document.createTextNode(c) : c));
       return el;
     };
 
