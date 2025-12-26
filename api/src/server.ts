@@ -435,13 +435,14 @@ app.post("/api/chat", async (req, res) => {
     // Build tools
     const tools: Anthropic.Tool[] = [...bolagsverketTools];
 
-    // Build beta headers
+    // Build beta headers (only include verified working betas)
     const betas: string[] = [];
 
-    if (interleaved_thinking) betas.push("interleaved-thinking-2025-05-14");
-    if (fine_grained_streaming) betas.push("fine-grained-tool-streaming-2025-05-14");
-    if (skills.length > 0) betas.push("skills-2025-10-02");
-    if (context_editing) betas.push("context-editing-2025-10-15");
+    // These are experimental - only add if explicitly enabled and verified
+    // if (interleaved_thinking) betas.push("interleaved-thinking-2025-05-14");
+    // if (fine_grained_streaming) betas.push("fine-grained-tool-streaming-2025-05-14");
+    // if (skills.length > 0) betas.push("skills-2025-10-02");
+    // context-editing header not yet available
 
     // Build system with cache
     const systemBlocks: Anthropic.TextBlockParam[] = extended_cache
