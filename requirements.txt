@@ -1,0 +1,26 @@
+# Bolagsverket MCP Server - Dependencies
+
+# MCP Framework
+fastmcp>=0.1.0
+
+# HTTP Client
+httpx>=0.25.0
+
+# HTML/XML Parsing
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# Validation
+pydantic>=2.0.0
+
+# Export - Excel
+openpyxl>=3.1.0
+
+# Export - PDF (optional, kräver system-libs)
+weasyprint>=60.0
+
+# Export - Word (.docx)
+python-docx>=1.1.0
+
+# Export - PowerPoint (.pptx)
+python-pptx>=0.6.23
