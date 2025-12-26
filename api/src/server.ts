@@ -4,25 +4,131 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { bolagsverketTools, executeBolagsverketTool } from "./tools.js";
+import { createMcpServer } from "./mcp-server.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(cors());
+
+// CORS for MCP connections
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use(express.json());
 
 // Serve static files from public folder
 app.use(express.static(path.join(__dirname, "../public")));
 
-// Health check
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+// ===========================================
+// MCP Endpoint for Remote Server URL
+// ===========================================
+
+// Store active transports
+const transports: Map<string, SSEServerTransport> = new Map();
+
+app.get("/sse", async (req, res) => {
+  console.log("[MCP] SSE connection request received");
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
+  const transport = new SSEServerTransport("/messages", res);
+  const sessionId = crypto.randomUUID();
+  transports.set(sessionId, transport);
+
+  const mcpServer = createMcpServer();
+  await mcpServer.connect(transport);
+
+  console.log(`[MCP] SSE connection established, session: ${sessionId}`);
+
+  // Send session ID to client
+  res.write(`event: endpoint\ndata: /messages?sessionId=${sessionId}\n\n`);
+
+  req.on("close", () => {
+    console.log(`[MCP] Client disconnected, session: ${sessionId}`);
+    transports.delete(sessionId);
+  });
 });
 
-// Chat endpoint with streaming
+app.post("/messages", async (req, res) => {
+  const sessionId = req.query.sessionId as string;
+  console.log(`[MCP] Message received for session: ${sessionId}`);
+
+  const transport = transports.get(sessionId);
+  if (!transport) {
+    console.error(`[MCP] No transport found for session: ${sessionId}`);
+    return res.status(400).json({ error: "Invalid session" });
+  }
+
+  try {
+    await transport.handlePostMessage(req, res);
+  } catch (error) {
+    console.error("[MCP] Error handling message:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// MCP Info endpoint
+app.get("/mcp", (_req, res) => {
+  res.json({
+    name: "bolagsverket-mcp",
+    version: "1.0.0",
+    description: "MCP Server för Bolagsverkets Värdefulla Datamängder API",
+    endpoints: {
+      sse: "/sse",
+      messages: "/messages",
+    },
+    tools: bolagsverketTools.map((t) => ({
+      name: t.name,
+      description: t.description,
+    })),
+    usage: {
+      claude_desktop: {
+        mcpServers: {
+          bolagsverket: {
+            url: "https://b-mcp-api.onrender.com/sse"
+          }
+        }
+      }
+    }
+  });
+});
+
+// ===========================================
+// Health Check
+// ===========================================
+
+app.get("/health", async (_req, res) => {
+  const memUsage = process.memoryUsage();
+  const heapUsedMB = (memUsage.heapUsed / 1024 / 1024).toFixed(2);
+
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: `${heapUsedMB}MB`,
+    endpoints: {
+      chat: "/chat",
+      mcp: "/mcp",
+      sse: "/sse",
+      tools: "/tools",
+    }
+  });
+});
+
+// ===========================================
+// Chat endpoint with streaming (for web UI)
+// ===========================================
+
 app.post("/chat", async (req, res) => {
-  const { messages, model = "claude-opus-4-5-20251101" } = req.body;
+  const { messages, model = "claude-sonnet-4-20250514" } = req.body;
 
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: "messages array required" });
@@ -150,7 +256,10 @@ Viktiga instruktioner:
   }
 });
 
+// ===========================================
 // List available tools
+// ===========================================
+
 app.get("/tools", (_req, res) => {
   res.json({
     tools: bolagsverketTools.map((t) => ({
@@ -160,7 +269,15 @@ app.get("/tools", (_req, res) => {
   });
 });
 
+// ===========================================
+// Start Server
+// ===========================================
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`B-MCP API running on port ${PORT}`);
+  console.log(`B-MCP Server running on port ${PORT}`);
+  console.log(`  Chat UI: http://localhost:${PORT}/`);
+  console.log(`  Health: http://localhost:${PORT}/health`);
+  console.log(`  MCP Info: http://localhost:${PORT}/mcp`);
+  console.log(`  MCP SSE: http://localhost:${PORT}/sse`);
 });
