@@ -26,7 +26,7 @@ class TokenManager {
       );
     }
 
-    const tokenUrl = "https://gw.api.bolagsverket.se/oauth2/token";
+    const tokenUrl = "https://portal.api.bolagsverket.se/oauth2/token";
 
     const response = await fetch(tokenUrl, {
       method: "POST",
