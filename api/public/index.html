@@ -3,478 +3,478 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>B-MCP - Bolagsverket AI Chat</title>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <title>B-MCP - Bolagsverket AI Chat v3.0</title>
+  <meta name="description" content="AI-driven analys av svenska foretag med Claude API och Bolagsverket MCP">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏢</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Inter', system-ui, sans-serif; }
+    :root { --bg: #fafaf9; --card: #ffffff; --text: #1c1917; --muted: #57534e; --accent: #1c1917; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); }
     .prose h2 { font-size: 1.25rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.75rem; }
     .prose h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
-    .prose p { margin-bottom: 0.5rem; }
+    .prose p { margin-bottom: 0.5rem; line-height: 1.6; }
     .prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.5rem; }
     .prose li { margin-bottom: 0.25rem; }
     .prose code { background: #f3f4f6; padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875rem; }
-    .prose pre { background: #1f2937; color: #f9fafb; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.75rem 0; }
-    .prose table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
+    .prose pre { background: #1f2937; color: #f9fafb; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+    .prose table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.875rem; }
     .prose th, .prose td { border: 1px solid #e5e7eb; padding: 0.5rem; text-align: left; }
     .prose th { background: #f9fafb; font-weight: 600; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    .animate-pulse { animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-pulse { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    .animate-spin { animation: spin 1s linear infinite; }
+    .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 3px; }
+    input[type="range"] { -webkit-appearance: none; background: #e7e5e4; border-radius: 0.5rem; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: #1c1917; border-radius: 50%; cursor: pointer; }
   </style>
 </head>
-<body>
-  <div id="root"></div>
+<body class="h-screen flex flex-col">
+  <div id="app"></div>
 
-  <script type="text/babel">
-    const { useState, useRef, useEffect } = React;
+  <script type="module">
+    const API_BASE = window.location.origin;
 
-    // Icons as simple SVG components
-    const Icons = {
-      Send: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>,
-      Building: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
-      Settings: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
-      Check: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
-      Copy: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>,
-      Refresh: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
-      X: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
-      Loader: () => <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>,
-      Tool: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
+    const state = {
+      messages: [],
+      input: '',
+      isLoading: false,
+      streamingContent: '',
+      thinkingContent: '',
+      isThinking: false,
+      showSettings: false,
+      currentTool: null,
+      model: 'claude-sonnet-4-5-20250929',
+      webSearch: false,
+      extendedThinking: false,
+      codeExecution: false,
+      temperature: 1.0,
+      effort: 'medium',
+      skills: [],
+      interleavedThinking: false,
+      contextEditing: true,
+      webFetch: false,
+      memory: false,
+      fineGrainedStreaming: true,
+      extendedCache: true,
+      uploadedFiles: [],
+      tokenCost: null,
+      copiedId: null,
+      connected: false,
+      userId: 'user_' + Math.random().toString(36).substr(2, 9)
     };
 
-    function App() {
-      const [messages, setMessages] = useState([]);
-      const [input, setInput] = useState('');
-      const [isLoading, setIsLoading] = useState(false);
-      const [showSettings, setShowSettings] = useState(false);
-      const [copiedId, setCopiedId] = useState(null);
-      const [model, setModel] = useState('claude-opus-4-5-20251101');
-      const [streamingContent, setStreamingContent] = useState('');
-      const [toolCalls, setToolCalls] = useState([]);
+    const models = [
+      { id: 'claude-opus-4-5-20251101', name: 'Opus 4.5', desc: 'Smartast + Effort', icon: '🧠', supportsEffort: true },
+      { id: 'claude-sonnet-4-5-20250929', name: 'Sonnet 4.5', desc: 'Balanserad', icon: '⚡', supportsEffort: false },
+      { id: 'claude-haiku-4-5-20251001', name: 'Haiku 4.5', desc: 'Snabbast', icon: '🚀', supportsEffort: false }
+    ];
 
-      const abortControllerRef = useRef(null);
-      const messagesEndRef = useRef(null);
-      const inputRef = useRef(null);
+    const effortLevels = [
+      { id: 'low', name: 'Lag', desc: '76% farre tokens' },
+      { id: 'medium', name: 'Medium', desc: 'Balanserad' },
+      { id: 'high', name: 'Hog', desc: 'Max kvalitet' }
+    ];
 
-      useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, [messages, streamingContent, toolCalls]);
+    const availableSkills = [
+      { id: 'excel', name: 'Excel', icon: '📊' },
+      { id: 'word', name: 'Word', icon: '📝' },
+      { id: 'powerpoint', name: 'PowerPoint', icon: '📽️' },
+      { id: 'pdf', name: 'PDF', icon: '📄' }
+    ];
 
-      const models = [
-        { id: 'claude-opus-4-5-20251101', name: 'Opus 4.5', desc: 'Smartast', icon: '🧠' },
-        { id: 'claude-sonnet-4-5-20250929', name: 'Sonnet 4.5', desc: 'Balanserad', icon: '⚡' },
-        { id: 'claude-haiku-4-5-20251001', name: 'Haiku 4.5', desc: 'Snabbast', icon: '🚀' }
-      ];
+    const examples = [
+      { text: 'Analysera Volvo AB', query: 'Analysera Volvo AB (556012-5790) - visa nyckeltal och riskbedomning' },
+      { text: 'Spotifys styrelse', query: 'Vilka sitter i Spotify Technology SA:s styrelse?' },
+      { text: 'Riskanalys IKEA', query: 'Gor en riskanalys av IKEA Svenska Forsaljnings AB (556074-7606)' },
+      { text: 'Kom ihag mitt namn', query: 'Kom ihag att jag heter Isak och ar intresserad av impact investing' }
+    ];
 
-      const examples = [
-        'Visa information om Volvo AB (5560360793)',
-        'Lista årsredovisningar för Spotify (5567885726)',
-        'Gör en riskanalys av 5564859921',
-        'Jämför Volvo (5560360793) med Scania (5562155227)'
-      ];
+    const $ = sel => document.querySelector(sel);
+    const h = (tag, attrs = {}, ...children) => {
+      const el = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (k === 'className') el.className = v;
+        else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+        else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+        else if (k === 'innerHTML') el.innerHTML = v;
+        else el.setAttribute(k, v);
+      }
+      children.flat().forEach(c => c != null && el.append(typeof c === 'string' ? document.createTextNode(c) : c));
+      return el;
+    };
 
-      const sendMessage = async () => {
-        if (!input.trim() || isLoading) return;
+    const icons = {
+      send: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>`,
+      building: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>`,
+      settings: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
+      globe: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>`,
+      brain: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>`,
+      code: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>`,
+      x: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`,
+      check: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`,
+      copy: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>`,
+      refresh: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>`,
+      loader: `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`
+    };
 
-        const userMessage = {
-          role: 'user',
-          content: input,
-          id: Date.now()
-        };
+    const icon = (name) => {
+      const span = document.createElement('span');
+      span.innerHTML = icons[name] || '';
+      return span.firstChild || document.createTextNode('');
+    };
 
-        const newMessages = [...messages, userMessage];
-        setMessages(newMessages);
-        setInput('');
-        setIsLoading(true);
-        setStreamingContent('');
-        setToolCalls([]);
+    let abortController = null;
 
-        abortControllerRef.current = new AbortController();
+    async function checkConnection() {
+      try {
+        const res = await fetch(`${API_BASE}/api/health`);
+        const data = await res.json();
+        state.connected = data.status === 'ok';
+        render();
+      } catch {
+        state.connected = false;
+        render();
+      }
+    }
 
-        try {
-          const res = await fetch('/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              messages: newMessages.map(m => ({
-                role: m.role,
-                content: m.content
-              })),
-              model
-            }),
-            signal: abortControllerRef.current.signal
-          });
+    async function sendMessage() {
+      if (!state.input.trim() || state.isLoading) return;
 
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder();
-          let fullContent = '';
-          let currentToolCalls = [];
+      const userMessage = { role: 'user', content: state.input, id: Date.now() };
+      state.messages.push(userMessage);
+      state.input = '';
+      state.isLoading = true;
+      state.streamingContent = '';
+      state.thinkingContent = '';
+      state.isThinking = false;
+      state.currentTool = null;
+      render();
 
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+      abortController = new AbortController();
 
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+      try {
+        const currentModel = models.find(m => m.id === state.model);
 
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                try {
-                  const data = JSON.parse(line.slice(6));
+        const res = await fetch(`${API_BASE}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: state.messages.map(m => ({ role: m.role, content: m.content })),
+            model: state.model,
+            web_search: state.webSearch,
+            extended_thinking: state.extendedThinking,
+            code_execution: state.codeExecution,
+            temperature: state.extendedThinking ? undefined : state.temperature,
+            effort: currentModel?.supportsEffort ? state.effort : undefined,
+            skills: state.skills.length > 0 ? state.skills : undefined,
+            interleaved_thinking: state.interleavedThinking,
+            context_editing: state.contextEditing,
+            web_fetch: state.webFetch,
+            memory: state.memory,
+            fine_grained_streaming: state.fineGrainedStreaming,
+            extended_cache: state.extendedCache,
+            user_id: state.userId
+          }),
+          signal: abortController.signal
+        });
 
-                  if (data.type === 'text') {
-                    fullContent += data.content;
-                    setStreamingContent(fullContent);
-                  } else if (data.type === 'tool_call') {
-                    currentToolCalls = [...currentToolCalls, { name: data.name, status: 'running' }];
-                    setToolCalls([...currentToolCalls]);
-                  } else if (data.type === 'tool_result') {
-                    currentToolCalls = currentToolCalls.map(t =>
-                      t.name === data.name ? { ...t, status: data.success ? 'success' : 'error', error: data.error } : t
-                    );
-                    setToolCalls([...currentToolCalls]);
-                  } else if (data.type === 'done') {
-                    setMessages(prev => [...prev, {
-                      role: 'assistant',
-                      content: fullContent,
-                      toolCalls: currentToolCalls,
-                      model,
-                      id: Date.now()
-                    }]);
-                  } else if (data.type === 'error') {
-                    throw new Error(data.error);
-                  }
-                } catch (e) {
-                  // Skip invalid JSON
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let fullContent = '';
+        let fullThinking = '';
+        let toolsUsed = [];
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          for (const line of chunk.split('\n')) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                if (data.type === 'text') {
+                  fullContent += data.text;
+                  state.streamingContent = fullContent;
+                  state.isThinking = false;
+                  render();
+                } else if (data.type === 'thinking_start') {
+                  state.isThinking = true;
+                  render();
+                } else if (data.type === 'thinking') {
+                  fullThinking += data.text;
+                  state.thinkingContent = fullThinking;
+                  render();
+                } else if (data.type === 'tool_start') {
+                  state.currentTool = data.name;
+                  toolsUsed.push(data.name);
+                  render();
+                } else if (data.type === 'tool_executing') {
+                  state.currentTool = data.name;
+                  render();
+                } else if (data.type === 'tool_result') {
+                  state.currentTool = null;
+                  render();
+                } else if (data.type === 'done') {
+                  state.tokenCost = data.usage;
+                  state.messages.push({
+                    role: 'assistant',
+                    content: fullContent,
+                    thinking: fullThinking || null,
+                    toolsUsed,
+                    usage: data.usage,
+                    model: state.model,
+                    id: Date.now()
+                  });
+                } else if (data.type === 'error') {
+                  throw new Error(data.error);
                 }
-              }
+              } catch (e) {}
             }
           }
-
-        } catch (err) {
-          if (err.name === 'AbortError') {
-            if (streamingContent) {
-              setMessages(prev => [...prev, {
-                role: 'assistant',
-                content: streamingContent + '\n\n*[Avbruten]*',
-                id: Date.now()
-              }]);
-            }
-          } else {
-            setMessages(prev => [...prev, {
-              role: 'assistant',
-              content: `❌ **Fel:** ${err.message}`,
-              isError: true,
-              id: Date.now()
-            }]);
-          }
-        } finally {
-          setIsLoading(false);
-          setStreamingContent('');
-          setToolCalls([]);
         }
-      };
-
-      const stopGeneration = () => {
-        abortControllerRef.current?.abort();
-      };
-
-      const clearChat = () => {
-        setMessages([]);
-        setStreamingContent('');
-        setToolCalls([]);
-      };
-
-      const copyToClipboard = (content, id) => {
-        navigator.clipboard.writeText(content);
-        setCopiedId(id);
-        setTimeout(() => setCopiedId(null), 2000);
-      };
-
-      const renderMarkdown = (content) => {
-        if (!content) return null;
-
-        return content.split('\n').map((line, i) => {
-          if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-stone-900 mt-5 mb-3">{line.slice(3)}</h2>;
-          if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-semibold text-stone-800 mt-4 mb-2">{line.slice(4)}</h3>;
-          if (line.startsWith('- ')) return <li key={i} className="text-stone-700 ml-4 mb-1">{renderBold(line.slice(2))}</li>;
-          if (line.startsWith('```')) return null;
-          if (!line.trim()) return <div key={i} className="h-2" />;
-          return <p key={i} className="text-stone-700 leading-relaxed mb-2">{renderBold(line)}</p>;
-        });
-      };
-
-      const renderBold = (text) => {
-        const parts = text.split(/(\*\*.*?\*\*)/g);
-        return parts.map((part, i) => {
-          if (part.startsWith('**') && part.endsWith('**')) {
-            return <strong key={i} className="font-semibold text-stone-900">{part.slice(2, -2)}</strong>;
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          if (state.streamingContent) {
+            state.messages.push({ role: 'assistant', content: state.streamingContent + '\n\n*[Avbruten]*', id: Date.now() });
           }
-          return part;
-        });
-      };
+        } else {
+          state.messages.push({ role: 'assistant', content: `**Fel:** ${err.message}`, isError: true, id: Date.now() });
+        }
+      } finally {
+        state.isLoading = false;
+        state.streamingContent = '';
+        state.thinkingContent = '';
+        state.isThinking = false;
+        state.currentTool = null;
+        render();
+        scrollToBottom();
+      }
+    }
 
-      const currentModel = models.find(m => m.id === model);
+    function stopGeneration() { abortController?.abort(); }
+    function clearChat() { state.messages = []; state.streamingContent = ''; state.thinkingContent = ''; state.tokenCost = null; render(); }
+    function scrollToBottom() { setTimeout(() => { const el = $('#messages'); if (el) el.scrollTop = el.scrollHeight; }, 50); }
+    function copyToClipboard(content, id) { navigator.clipboard.writeText(content); state.copiedId = id; render(); setTimeout(() => { state.copiedId = null; render(); }, 2000); }
+    function toggleSkill(skillId) { state.skills = state.skills.includes(skillId) ? state.skills.filter(s => s !== skillId) : [...state.skills, skillId]; render(); }
 
-      return (
-        <div className="h-screen bg-stone-50 flex flex-col">
-          {/* Header */}
-          <header className="border-b border-stone-200 px-4 py-3 bg-white">
-            <div className="max-w-3xl mx-auto flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center text-white">
-                  <Icons.Building />
-                </div>
-                <div>
-                  <h1 className="text-lg font-semibold text-stone-900">B-MCP</h1>
-                  <div className="flex items-center gap-2 text-xs text-stone-500">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                    <span>{currentModel?.icon} {currentModel?.name}</span>
-                  </div>
-                </div>
-              </div>
+    function render() {
+      const app = $('#app');
+      app.innerHTML = '';
+      app.appendChild(renderApp());
+    }
 
-              <div className="flex items-center gap-2">
-                {messages.length > 0 && (
-                  <button onClick={clearChat} className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg">
-                    <Icons.Refresh />
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowSettings(!showSettings)}
-                  className={`p-2 rounded-lg transition-colors ${showSettings ? 'bg-stone-900 text-white' : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'}`}
-                >
-                  <Icons.Settings />
-                </button>
-              </div>
-            </div>
-          </header>
+    function renderApp() {
+      const currentModel = models.find(m => m.id === state.model);
 
-          {/* Settings Panel */}
-          {showSettings && (
-            <div className="border-b border-stone-200 bg-white px-4 py-4 overflow-y-auto max-h-[50vh]">
-              <div className="max-w-3xl mx-auto space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-2">Modell</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {models.map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => setModel(m.id)}
-                        className={`p-3 rounded-xl border text-left transition-all ${
-                          model === m.id
-                            ? 'border-stone-900 bg-stone-900 text-white'
-                            : 'border-stone-200 hover:border-stone-300 bg-white'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{m.icon}</span>
-                          <div>
-                            <div className="font-medium text-sm">{m.name}</div>
-                            <div className={`text-xs ${model === m.id ? 'text-stone-300' : 'text-stone-500'}`}>{m.desc}</div>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                  <p className="text-sm text-blue-700">
-                    <strong>Bolagsverkets API</strong> - Hämtar företagsdata direkt från officiella källor via MCP-verktyg.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Chat Area */}
-          <main className="flex-1 overflow-auto px-4 py-6">
-            <div className="max-w-3xl mx-auto">
-
-              {/* Empty state */}
-              {messages.length === 0 && !streamingContent && (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 bg-stone-900 rounded-2xl flex items-center justify-center mx-auto mb-6 text-white">
-                    <Icons.Building />
-                  </div>
-                  <h2 className="text-2xl font-bold text-stone-900 mb-2">B-MCP</h2>
-                  <p className="text-stone-500 mb-6 max-w-md mx-auto">
-                    Fråga om svenska företag – jag hämtar data direkt från Bolagsverkets API.
-                  </p>
-
-                  <div className="flex flex-wrap justify-center gap-2 mb-6">
-                    <span className="text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">📋 Företagsinfo</span>
-                    <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full">📊 Årsredovisningar</span>
-                    <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full">⚠️ Riskanalys</span>
-                    <span className="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-full">🔄 Jämför företag</span>
-                  </div>
-
-                  <p className="text-sm text-stone-400 mb-3">Prova att fråga:</p>
-                  <div className="space-y-2 max-w-md mx-auto">
-                    {examples.map((q, i) => (
-                      <button
-                        key={i}
-                        onClick={() => { setInput(q); inputRef.current?.focus(); }}
-                        className="w-full text-left text-sm bg-white border border-stone-200 hover:border-stone-300 px-4 py-3 rounded-xl transition-colors"
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Messages */}
-              <div className="space-y-4">
-                {messages.map((msg) => (
-                  <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    {msg.role === 'user' ? (
-                      <div className="bg-stone-900 text-white px-4 py-3 rounded-2xl rounded-br-sm max-w-[85%]">
-                        {msg.content}
-                      </div>
-                    ) : (
-                      <div className="space-y-2 max-w-[95%] w-full">
-                        {/* Tool calls */}
-                        {msg.toolCalls?.length > 0 && (
-                          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                            <div className="flex items-center gap-2 text-amber-700 text-sm font-medium mb-2">
-                              <Icons.Tool /> Verktygsanrop
-                            </div>
-                            <div className="space-y-1">
-                              {msg.toolCalls.map((t, i) => (
-                                <div key={i} className="flex items-center gap-2 text-xs">
-                                  {t.status === 'success' ? (
-                                    <span className="text-emerald-600">✓</span>
-                                  ) : t.status === 'error' ? (
-                                    <span className="text-red-600">✗</span>
-                                  ) : (
-                                    <span className="text-amber-600">⋯</span>
-                                  )}
-                                  <span className="text-stone-600">{t.name}</span>
-                                  {t.error && <span className="text-red-500">{t.error}</span>}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Content */}
-                        <div className={`bg-white border ${msg.isError ? 'border-red-200' : 'border-stone-200'} rounded-2xl rounded-bl-sm p-4 shadow-sm`}>
-                          <div className="prose max-w-none">
-                            {renderMarkdown(msg.content)}
-                          </div>
-                        </div>
-
-                        {/* Meta */}
-                        <div className="flex items-center gap-3 ml-2 text-xs text-stone-400">
-                          <button onClick={() => copyToClipboard(msg.content, msg.id)} className="flex items-center gap-1 hover:text-stone-600">
-                            {copiedId === msg.id ? <><Icons.Check /> Kopierat</> : <><Icons.Copy /> Kopiera</>}
-                          </button>
-                          <span>{models.find(m => m.id === msg.model)?.name || 'Claude'}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {/* Streaming */}
-                {(streamingContent || toolCalls.length > 0 || isLoading) && (
-                  <div className="flex justify-start">
-                    <div className="space-y-2 max-w-[95%] w-full">
-                      {/* Active tool calls */}
-                      {toolCalls.length > 0 && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                          <div className="flex items-center gap-2 text-amber-700 text-sm font-medium mb-2">
-                            <Icons.Tool /> <span className="animate-pulse">Hämtar data...</span>
-                          </div>
-                          <div className="space-y-1">
-                            {toolCalls.map((t, i) => (
-                              <div key={i} className="flex items-center gap-2 text-xs">
-                                {t.status === 'success' ? (
-                                  <span className="text-emerald-600">✓</span>
-                                ) : t.status === 'error' ? (
-                                  <span className="text-red-600">✗</span>
-                                ) : (
-                                  <span className="text-amber-600 animate-pulse">⋯</span>
-                                )}
-                                <span className="text-stone-600">{t.name}</span>
-                                {t.error && <span className="text-red-500">{t.error}</span>}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {streamingContent && (
-                        <div className="bg-white border border-stone-200 rounded-2xl rounded-bl-sm p-4 shadow-sm">
-                          <div className="prose max-w-none">
-                            {renderMarkdown(streamingContent)}
-                          </div>
-                          <span className="inline-block w-2 h-4 bg-stone-400 animate-pulse ml-1" />
-                        </div>
-                      )}
-
-                      {isLoading && !streamingContent && toolCalls.length === 0 && (
-                        <div className="bg-white border border-stone-200 rounded-2xl rounded-bl-sm p-4 shadow-sm flex items-center gap-2 text-stone-400">
-                          <Icons.Loader /> <span className="text-sm">Ansluter...</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div ref={messagesEndRef} />
-            </div>
-          </main>
-
-          {/* Input */}
-          <footer className="border-t border-stone-200 px-4 py-4 bg-white">
-            <div className="max-w-3xl mx-auto">
-              <div className="flex gap-2">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                  placeholder="Ställ en fråga om svenska företag..."
-                  disabled={isLoading}
-                  className="flex-1 bg-stone-100 border-0 rounded-xl px-4 py-3 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 disabled:opacity-50"
-                />
-
-                {isLoading ? (
-                  <button onClick={stopGeneration} className="bg-red-600 hover:bg-red-700 text-white px-5 rounded-xl flex items-center justify-center">
-                    <Icons.X />
-                  </button>
-                ) : (
-                  <button
-                    onClick={sendMessage}
-                    disabled={!input.trim()}
-                    className="bg-stone-900 hover:bg-stone-800 disabled:bg-stone-300 text-white px-5 rounded-xl flex items-center justify-center"
-                  >
-                    <Icons.Send />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between mt-2 text-xs text-stone-400">
-                <span>Enter för att skicka</span>
-                <div className="flex items-center gap-2">
-                  <span>{currentModel?.icon} {currentModel?.name}</span>
-                </div>
-              </div>
-            </div>
-          </footer>
-        </div>
+      return h('div', { className: 'h-screen flex flex-col bg-stone-50' },
+        h('header', { className: 'border-b border-stone-200 px-4 py-3 bg-white flex-shrink-0' },
+          h('div', { className: 'max-w-4xl mx-auto flex items-center justify-between' },
+            h('div', { className: 'flex items-center gap-3' },
+              h('div', { className: 'w-10 h-10 bg-stone-900 rounded-xl flex items-center justify-center text-white' }, icon('building')),
+              h('div', {},
+                h('h1', { className: 'text-lg font-semibold text-stone-900' }, 'B-MCP Chat v3.0'),
+                h('div', { className: 'flex items-center gap-2 text-xs text-stone-500' },
+                  h('span', { className: `w-1.5 h-1.5 rounded-full ${state.connected ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}` }),
+                  state.connected ? h('span', {}, `${currentModel?.icon} ${currentModel?.name}${currentModel?.supportsEffort ? ` • ${state.effort}` : ''}`) : h('span', {}, 'Ansluter...')
+                )
+              )
+            ),
+            h('div', { className: 'flex items-center gap-2' },
+              state.messages.length > 0 && h('button', { onClick: clearChat, className: 'p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-lg' }, icon('refresh')),
+              h('button', { onClick: () => { state.showSettings = !state.showSettings; render(); }, className: `p-2 rounded-lg ${state.showSettings ? 'bg-stone-900 text-white' : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'}` }, icon('settings'))
+            )
+          )
+        ),
+        state.showSettings && renderSettings(),
+        h('main', { id: 'messages', className: 'flex-1 overflow-auto px-4 py-6 scrollbar-thin' },
+          h('div', { className: 'max-w-4xl mx-auto' }, state.messages.length === 0 && !state.streamingContent ? renderEmptyState() : renderMessages())
+        ),
+        renderInput()
       );
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    function renderSettings() {
+      const currentModel = models.find(m => m.id === state.model);
+
+      return h('div', { className: 'border-b border-stone-200 bg-white px-4 py-4 overflow-y-auto max-h-[60vh] flex-shrink-0' },
+        h('div', { className: 'max-w-4xl mx-auto space-y-5' },
+          h('div', {},
+            h('label', { className: 'block text-sm font-medium text-stone-700 mb-2' }, 'Modell'),
+            h('div', { className: 'grid grid-cols-3 gap-2' },
+              ...models.map(m => h('button', { onClick: () => { state.model = m.id; render(); }, className: `p-3 rounded-xl border text-left transition-all ${state.model === m.id ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 hover:border-stone-300'}` },
+                h('div', { className: 'flex items-center gap-2' },
+                  h('span', { className: 'text-lg' }, m.icon),
+                  h('div', {}, h('div', { className: 'font-medium text-sm' }, m.name), h('div', { className: `text-xs ${state.model === m.id ? 'text-stone-300' : 'text-stone-500'}` }, m.desc))
+                )
+              ))
+            )
+          ),
+          currentModel?.supportsEffort && h('div', {},
+            h('label', { className: 'block text-sm font-medium text-stone-700 mb-2' }, 'Effort Level ', h('span', { className: 'text-xs text-amber-600' }, '(Opus 4.5)')),
+            h('div', { className: 'grid grid-cols-3 gap-2' },
+              ...effortLevels.map(e => h('button', { onClick: () => { state.effort = e.id; render(); }, className: `p-2 rounded-lg border text-center transition-all ${state.effort === e.id ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-stone-200 hover:border-stone-300'}` },
+                h('div', { className: 'font-medium text-sm' }, e.name), h('div', { className: 'text-xs text-stone-500' }, e.desc)
+              ))
+            )
+          ),
+          h('div', {},
+            h('label', { className: 'block text-sm font-medium text-stone-700 mb-2' }, `Temperature: ${state.temperature.toFixed(1)}`, state.extendedThinking && h('span', { className: 'text-amber-600 ml-2 text-xs' }, '(inaktiv med Thinking)')),
+            h('input', { type: 'range', min: '0', max: '2', step: '0.1', value: state.temperature, disabled: state.extendedThinking, onInput: e => { state.temperature = parseFloat(e.target.value); render(); }, className: 'w-full h-2 rounded-lg cursor-pointer disabled:opacity-50' })
+          ),
+          h('div', {},
+            h('label', { className: 'block text-sm font-medium text-stone-700 mb-2' }, 'Funktioner'),
+            h('div', { className: 'flex flex-wrap gap-2' },
+              renderToggle('webSearch', 'Webbsok', 'globe', 'blue'),
+              renderToggle('extendedThinking', 'Thinking', 'brain', 'purple'),
+              renderToggle('codeExecution', 'Kod', 'code', 'green')
+            )
+          ),
+          h('div', {},
+            h('label', { className: 'block text-sm font-medium text-stone-700 mb-2' }, 'Agent Skills'),
+            h('div', { className: 'flex flex-wrap gap-2' },
+              ...availableSkills.map(skill => h('button', { onClick: () => toggleSkill(skill.id), className: `flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${state.skills.includes(skill.id) ? 'border-violet-500 bg-violet-50 text-violet-700' : 'border-stone-200 hover:border-stone-300'}` }, h('span', {}, skill.icon), h('span', { className: 'text-sm' }, skill.name)))
+            )
+          ),
+          h('div', {},
+            h('label', { className: 'block text-sm font-medium text-stone-700 mb-2' }, 'Avancerade funktioner'),
+            h('div', { className: 'grid grid-cols-2 gap-2' },
+              renderSmallToggle('memory', 'Minne', 'Spara info mellan sessioner'),
+              renderSmallToggle('webFetch', 'Web Fetch', 'Hamta hela webbsidor'),
+              renderSmallToggle('interleavedThinking', 'Interleaved', 'Tank mellan verktyg'),
+              renderSmallToggle('contextEditing', 'Kontext', 'Auto-hantera kontext'),
+              renderSmallToggle('fineGrainedStreaming', 'Streaming', 'Snabbare tool-streaming'),
+              renderSmallToggle('extendedCache', '1h Cache', 'Langre prompt-cache')
+            )
+          ),
+          state.tokenCost && h('div', { className: 'bg-stone-100 rounded-xl p-3 text-sm' },
+            h('div', { className: 'font-medium text-stone-700 mb-1' }, 'Senaste anrop'),
+            h('div', { className: 'grid grid-cols-2 gap-2 text-xs text-stone-500' },
+              h('div', {}, `Input: ${state.tokenCost.input_tokens?.toLocaleString()}`),
+              h('div', {}, `Output: ${state.tokenCost.output_tokens?.toLocaleString()}`),
+              state.tokenCost.cache_read_input_tokens > 0 && h('div', { className: 'text-emerald-600 col-span-2' }, `Cache read: ${state.tokenCost.cache_read_input_tokens.toLocaleString()} tokens (90% besparing!)`)
+            )
+          )
+        )
+      );
+    }
+
+    function renderToggle(key, label, iconName, color) {
+      const active = state[key];
+      const colors = { blue: active ? 'border-blue-500 bg-blue-50 text-blue-700' : '', purple: active ? 'border-purple-500 bg-purple-50 text-purple-700' : '', green: active ? 'border-green-500 bg-green-50 text-green-700' : '' };
+      return h('button', { onClick: () => { state[key] = !state[key]; render(); }, className: `flex items-center gap-2 px-4 py-2 rounded-full border transition-all ${colors[color] || ''} ${!active ? 'border-stone-200 hover:border-stone-300' : ''}` }, icon(iconName), h('span', { className: 'text-sm font-medium' }, label), active && icon('check'));
+    }
+
+    function renderSmallToggle(key, label, desc) {
+      const active = state[key];
+      return h('button', { onClick: () => { state[key] = !state[key]; render(); }, className: `p-2 rounded-lg border text-left transition-all ${active ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 hover:border-stone-300'}` },
+        h('div', { className: 'flex items-center justify-between' }, h('span', { className: 'text-sm' }, label), active && icon('check')),
+        h('div', { className: `text-xs ${active ? 'text-stone-400' : 'text-stone-500'}` }, desc)
+      );
+    }
+
+    function renderEmptyState() {
+      return h('div', { className: 'text-center py-8' },
+        h('div', { className: 'w-16 h-16 bg-stone-900 rounded-2xl flex items-center justify-center mx-auto mb-6 text-white' }, icon('building')),
+        h('h2', { className: 'text-2xl font-bold text-stone-900 mb-2' }, 'Bolagsverket AI v3.0'),
+        h('p', { className: 'text-stone-500 mb-6 max-w-md mx-auto' }, 'Analysera svenska foretag med AI - nu med Effort Control, Agent Skills och Memory.'),
+        h('div', { className: 'flex flex-wrap justify-center gap-2 mb-6' },
+          h('span', { className: 'text-xs bg-amber-100 text-amber-700 px-3 py-1 rounded-full' }, 'Effort Parameter'),
+          h('span', { className: 'text-xs bg-violet-100 text-violet-700 px-3 py-1 rounded-full' }, 'Agent Skills'),
+          h('span', { className: 'text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full' }, 'Memory'),
+          h('span', { className: 'text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full' }, '1h Cache')
+        ),
+        h('p', { className: 'text-sm text-stone-400 mb-3' }, 'Prova:'),
+        h('div', { className: 'space-y-2 max-w-md mx-auto' },
+          ...examples.map(ex => h('button', { onClick: () => { state.input = ex.query; render(); $('#input')?.focus(); }, className: 'w-full text-left text-sm bg-white border border-stone-200 hover:border-stone-300 px-4 py-3 rounded-xl' }, ex.text))
+        )
+      );
+    }
+
+    function renderMessages() {
+      const elements = [];
+      for (const msg of state.messages) elements.push(renderMessage(msg));
+      if (state.streamingContent || state.isThinking || state.currentTool) elements.push(renderStreamingMessage());
+      if (state.isLoading && !state.streamingContent && !state.isThinking && !state.currentTool) {
+        elements.push(h('div', { className: 'flex justify-start' }, h('div', { className: 'bg-white border border-stone-200 rounded-2xl rounded-bl-sm p-4 shadow-sm flex items-center gap-2 text-stone-400' }, icon('loader'), h('span', { className: 'text-sm' }, 'Ansluter...'))));
+      }
+      return h('div', { className: 'space-y-4' }, ...elements);
+    }
+
+    function renderMessage(msg) {
+      if (msg.role === 'user') return h('div', { className: 'flex justify-end' }, h('div', { className: 'max-w-[85%]' }, h('div', { className: 'bg-stone-900 text-white px-4 py-3 rounded-2xl rounded-br-sm' }, msg.content)));
+
+      return h('div', { className: 'flex justify-start' },
+        h('div', { className: 'space-y-2 max-w-[95%] w-full' },
+          msg.thinking && h('details', { className: 'bg-purple-50 border border-purple-200 rounded-xl overflow-hidden' },
+            h('summary', { className: 'px-4 py-2 cursor-pointer text-sm font-medium text-purple-700 hover:bg-purple-100' }, 'Visa tankegang'),
+            h('div', { className: 'px-4 py-3 text-sm text-purple-800 border-t border-purple-200 bg-white max-h-48 overflow-y-auto' }, h('pre', { className: 'whitespace-pre-wrap font-sans' }, msg.thinking))
+          ),
+          msg.toolsUsed?.length > 0 && h('div', { className: 'flex flex-wrap gap-2' }, ...msg.toolsUsed.map(tool => h('span', { className: 'text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full' }, `${tool.replace('bolagsverket_', '')}`))),
+          h('div', { className: `bg-white border ${msg.isError ? 'border-red-200' : 'border-stone-200'} rounded-2xl rounded-bl-sm p-4 shadow-sm` }, h('div', { className: 'prose max-w-none', innerHTML: renderMarkdown(msg.content) })),
+          h('div', { className: 'flex items-center gap-3 ml-2 text-xs text-stone-400' },
+            h('button', { onClick: () => copyToClipboard(msg.content, msg.id), className: 'flex items-center gap-1 hover:text-stone-600' }, state.copiedId === msg.id ? [icon('check'), 'Kopierat'] : [icon('copy'), 'Kopiera']),
+            h('span', {}, models.find(m => m.id === msg.model)?.name || 'Claude'),
+            msg.usage?.cache_read_input_tokens > 0 && h('span', { className: 'text-emerald-600' }, 'Cache')
+          )
+        )
+      );
+    }
+
+    function renderStreamingMessage() {
+      return h('div', { className: 'flex justify-start' },
+        h('div', { className: 'space-y-2 max-w-[95%] w-full' },
+          state.currentTool && h('div', { className: 'bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2' }, icon('loader'), h('span', { className: 'text-sm text-amber-700' }, `Kor ${state.currentTool}...`)),
+          state.thinkingContent && h('div', { className: 'bg-purple-50 border border-purple-200 rounded-xl p-4' }, h('div', { className: 'flex items-center gap-2 text-purple-700 mb-2' }, icon('brain'), h('span', { className: 'text-sm font-medium animate-pulse' }, 'Tanker...')), h('pre', { className: 'text-xs text-purple-600 whitespace-pre-wrap font-sans max-h-32 overflow-y-auto' }, state.thinkingContent)),
+          state.isThinking && !state.thinkingContent && h('div', { className: 'bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-center gap-2 text-purple-700' }, icon('brain'), h('span', { className: 'text-sm animate-pulse' }, 'Tanker...')),
+          state.streamingContent && h('div', { className: 'bg-white border border-stone-200 rounded-2xl rounded-bl-sm p-4 shadow-sm' }, h('div', { className: 'prose max-w-none', innerHTML: renderMarkdown(state.streamingContent) }), h('span', { className: 'inline-block w-2 h-4 bg-stone-400 animate-pulse ml-1' }))
+        )
+      );
+    }
+
+    function renderMarkdown(text) {
+      if (!text) return '';
+      return text
+        .replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold text-stone-800 mt-4 mb-2">$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold text-stone-900 mt-5 mb-3">$1</h2>')
+        .replace(/^\- (.+)$/gm, '<li class="text-stone-700 ml-4 mb-1">$1</li>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-stone-900">$1</strong>')
+        .replace(/`(.+?)`/g, '<code class="bg-stone-100 px-1.5 py-0.5 rounded text-sm">$1</code>')
+        .replace(/\n\n/g, '</p><p class="text-stone-700 leading-relaxed mb-2">')
+        .replace(/^(.+)$/gm, '<p class="text-stone-700 leading-relaxed mb-2">$1</p>')
+        .replace(/<p><\/p>/g, '');
+    }
+
+    function renderInput() {
+      return h('footer', { className: 'border-t border-stone-200 px-4 py-4 bg-white flex-shrink-0' },
+        h('div', { className: 'max-w-4xl mx-auto' },
+          h('div', { className: 'flex gap-2' },
+            h('input', { id: 'input', type: 'text', value: state.input, onInput: e => { state.input = e.target.value; }, onKeydown: e => { if (e.key === 'Enter' && !e.shiftKey) sendMessage(); }, placeholder: 'Stall en fraga om svenska foretag...', disabled: state.isLoading || !state.connected, className: 'flex-1 bg-stone-100 border-0 rounded-xl px-4 py-3 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 disabled:opacity-50' }),
+            state.isLoading ? h('button', { onClick: stopGeneration, className: 'bg-red-600 hover:bg-red-700 text-white px-5 rounded-xl' }, icon('x')) : h('button', { onClick: sendMessage, disabled: !state.input.trim() || !state.connected, className: 'bg-stone-900 hover:bg-stone-800 disabled:bg-stone-300 text-white px-5 rounded-xl disabled:cursor-not-allowed' }, icon('send'))
+          ),
+          h('div', { className: 'flex items-center justify-between mt-2 text-xs text-stone-400' },
+            h('span', {}, 'Enter for att skicka'),
+            h('div', { className: 'flex items-center gap-1' },
+              state.webSearch && h('span', {}, 'Sok'),
+              state.extendedThinking && h('span', {}, 'Think'),
+              state.memory && h('span', {}, 'Minne'),
+              state.skills.length > 0 && h('span', {}, 'Skills'),
+              h('span', {}, models.find(m => m.id === state.model)?.icon)
+            )
+          )
+        )
+      );
+    }
+
+    checkConnection();
+    render();
+    setInterval(checkConnection, 30000);
   </script>
 </body>
 </html>
