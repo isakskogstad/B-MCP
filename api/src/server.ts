@@ -14,7 +14,7 @@ app.get("/health", (_req, res) => {
 
 // Chat endpoint with streaming
 app.post("/chat", async (req, res) => {
-  const { messages, model = "claude-opus-4-5-20250929" } = req.body;
+  const { messages, model = "claude-opus-4-5-20251101" } = req.body;
 
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: "messages array required" });
