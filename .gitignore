@@ -33,3 +33,9 @@ exports/
 # Credentials
 .env
 *.key
+
+# Node.js
+node_modules/
+dist/
+*.log
+package-lock.json
